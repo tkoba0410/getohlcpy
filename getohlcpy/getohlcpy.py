@@ -71,7 +71,6 @@ def csv_merge(
         df: pd.DataFrame,
         cashe_file: str) -> pd.DataFrame:
     df_cashe = pd.read_csv(cashe_file, header=0, index_col=0, parse_dates=True)
-    df_cashe.to_csv('df_cashe.csv')
     df_diff = df[~(df.index).isin(df_cashe.index[:-1])]
     df_result = pd.concat([df_cashe, df_diff], axis=0)
     return df_result
