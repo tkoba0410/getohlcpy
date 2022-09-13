@@ -95,6 +95,7 @@ def get_ohlc(pair: str, cashe_file: str = None) -> pd.DataFrame:
 
 if __name__ == '__main__':
     df = get_ohlc('btcfxjpy', cashe_file='csv/ohlcv-btcfxjpy.csv')
+    df = get_ohlc('btcjpy', cashe_file='csv/ohlcv-btcjpy.csv')
 
 
 """
