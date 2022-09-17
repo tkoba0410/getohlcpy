@@ -7,7 +7,7 @@ from requests.models import Response
 TZ_JTC = timezone(timedelta(hours=+9))
 
 
-def get_ohlc_response(
+def _get_ohlc_response(
         pair: str) -> Response:
     # exchange (str): 'bitflyer'
     # pair (str): 'btcfxjpy', 'btcjpy'
@@ -67,10 +67,6 @@ def _fillna_ohlcv(
     return df
 
 
-def load_ohlcv(cashe_file: str) -> pd.DataFrame:
-    return pd.read_csv(cashe_file, header=0, index_col=0, parse_dates=True)
-
-
 def _csv_merge(
         df: pd.DataFrame,
         cashe_file: str) -> pd.DataFrame:
@@ -81,27 +77,35 @@ def _csv_merge(
     return df_result
 
 
-def get_ohlc(
+def load_ohlcv(ohlcv_file: str) -> pd.DataFrame:
+    return pd.read_csv(ohlcv_file, header=0, index_col=0, parse_dates=True)
+
+
+def get_ohlcv(
         pair: str,
         cashe_file: str = None,
-        chshe_update: bool = False) -> pd.DataFrame:
-    res = get_ohlc_response(pair)
+        cashe_update: bool = False) -> pd.DataFrame:
+    res = _get_ohlc_response(pair)
     df = _response_to_df(res)
     df = _reformat(df)
     df = _fillna_ohlcv(df)
     if cashe_file is not None:
         if os.path.exists(cashe_file):
             df = _csv_merge(df, cashe_file)
-        if chshe_update:
+        if cashe_update:
             df.to_csv(cashe_file)
     return df
 
 
 if __name__ == '__main__':
-    print('this pack')
-    pass
-    df = get_ohlc('btcfxjpy', cashe_file='csv/ohlcv-btcfxjpy.csv', chshe_update=True)
-    df = get_ohlc('btcjpy', cashe_file='csv/ohlcv-btcjpy.csv', chshe_update=True)
+    df = get_ohlcv(
+        'btcfxjpy',
+        cashe_file='csv/ohlcv-btcfxjpy.csv',
+        cashe_update=True)
+    df = get_ohlcv(
+        'btcjpy',
+        cashe_file='csv/ohlcv-btcjpy.csv',
+        cashe_update=True)
 
 
 """
