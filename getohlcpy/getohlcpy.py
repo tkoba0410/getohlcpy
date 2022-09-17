@@ -16,7 +16,7 @@ def get_ohlc_response(
     return requests.get(url, params)
 
 
-def response_to_df(res: Response) -> pd.DataFrame:
+def _response_to_df(res: Response) -> pd.DataFrame:
     json = res.json(
         parse_float=float,
         parse_int=float,
@@ -37,7 +37,7 @@ def response_to_df(res: Response) -> pd.DataFrame:
     return df
 
 
-def reformat(df: pd.DataFrame) -> pd.DataFrame:
+def _reformat(df: pd.DataFrame) -> pd.DataFrame:
     df['OpenTime'] = df['CloseTime'] - int(60)
     df['OpenTime'] = pd.to_datetime(df['OpenTime'], unit='s', utc=True)
     df['OpenTime'] = df['OpenTime'].dt.tz_convert(TZ_JTC)
@@ -53,7 +53,7 @@ def reformat(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def fillna_ohlcv(
+def _fillna_ohlcv(
     df: pd.DataFrame,
 ) -> pd.DataFrame:
     date = pd.date_range(start=df.index[0], end=df.index[-1], freq='1min')
@@ -71,7 +71,7 @@ def load_ohlcv(cashe_file: str) -> pd.DataFrame:
     return pd.read_csv(cashe_file, header=0, index_col=0, parse_dates=True)
 
 
-def csv_merge(
+def _csv_merge(
         df: pd.DataFrame,
         cashe_file: str) -> pd.DataFrame:
     df_cashe = load_ohlcv(cashe_file)
@@ -81,21 +81,27 @@ def csv_merge(
     return df_result
 
 
-def get_ohlc(pair: str, cashe_file: str = None) -> pd.DataFrame:
+def get_ohlc(
+        pair: str,
+        cashe_file: str = None,
+        chshe_update: bool = False) -> pd.DataFrame:
     res = get_ohlc_response(pair)
-    df = response_to_df(res)
-    df = reformat(df)
-    df = fillna_ohlcv(df)
+    df = _response_to_df(res)
+    df = _reformat(df)
+    df = _fillna_ohlcv(df)
     if cashe_file is not None:
         if os.path.exists(cashe_file):
-            df = csv_merge(df, cashe_file)
-        df.to_csv(cashe_file)
+            df = _csv_merge(df, cashe_file)
+        if chshe_update:
+            df.to_csv(cashe_file)
     return df
 
 
 if __name__ == '__main__':
-    df = get_ohlc('btcfxjpy', cashe_file='csv/ohlcv-btcfxjpy.csv')
-    df = get_ohlc('btcjpy', cashe_file='csv/ohlcv-btcjpy.csv')
+    print('this pack')
+    pass
+    df = get_ohlc('btcfxjpy', cashe_file='csv/ohlcv-btcfxjpy.csv', chshe_update=True)
+    df = get_ohlc('btcjpy', cashe_file='csv/ohlcv-btcjpy.csv', chshe_update=True)
 
 
 """
