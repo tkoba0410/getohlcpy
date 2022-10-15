@@ -97,6 +97,19 @@ def get_ohlcv(
     return df
 
 
+def load_ohlcv_cashe(
+        ohlcv_file_path: str = None,
+        local_cashe_path: str = None
+) -> pd.DataFrame:
+    # cashe_path = 'data/ohlcv.pkl'
+    if os.path.isfile(local_cashe_path):
+        df = pd.read_pickle(local_cashe_path)
+    else:
+        # df = load_ohlcv(ohlcv_file='btradepy/data/csv/test.csv')
+        df = load_ohlcv(ohlcv_file=ohlcv_file_path)
+        df.to_pickle(local_cashe_path)
+
+
 if __name__ == '__main__':
     df = get_ohlcv(
         'btcfxjpy',
