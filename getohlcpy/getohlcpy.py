@@ -1,5 +1,6 @@
 from datetime import timedelta, timezone
 import os
+from typing import List
 import requests
 import pandas as pd
 from requests.models import Response
@@ -69,56 +70,75 @@ def _fillna_ohlcv(
 
 def _csv_merge(
         df: pd.DataFrame,
-        cashe_file: str) -> pd.DataFrame:
-    df_cashe = load_ohlcv(cashe_file)
+        archive_file: str) -> pd.DataFrame:
+    df_cashe = load_ohlcv(archive_file)
     df_diff = df[~(df.index).isin(df_cashe.index[:-1])]
     df_result = pd.concat([df_cashe, df_diff], axis=0)
     df_result.index.name = 'OpenTime'
     return df_result
 
 
-def load_ohlcv(ohlcv_file: str) -> pd.DataFrame:
-    return pd.read_csv(ohlcv_file, header=0, index_col=0, parse_dates=True)
-
-
-def get_ohlcv(
-        pair: str,
-        cashe_file: str = None,
-        cashe_update: bool = False) -> pd.DataFrame:
+def get_ohlcv(pair: str) -> pd.DataFrame:
     res = _get_ohlc_response(pair)
     df = _response_to_df(res)
     df = _reformat(df)
     df = _fillna_ohlcv(df)
-    if cashe_file is not None:
-        if os.path.exists(cashe_file):
-            df = _csv_merge(df, cashe_file)
-        if cashe_update:
-            df.to_csv(cashe_file)
     return df
 
 
-def load_ohlcv_cashe(
-        ohlcv_file_path: str = None,
-        local_cashe_path: str = None
+def get_ohlcv_with_archive(
+        pair: str,
+        archive_file: str = None,
+        archive_update: bool = False) -> pd.DataFrame:
+    df = get_ohlcv(pair)
+    if isinstance(archive_file, str):
+        if os.path.exists(archive_file):
+            df = _csv_merge(df, archive_file)
+            if archive_update:
+                df.to_csv(archive_file)
+    return df
+
+
+def load_ohlcv(archive_file: str) -> pd.DataFrame:
+    return pd.read_csv(archive_file, header=0, index_col=0, parse_dates=True)
+
+
+def load_ohlcv_with_cashe(
+        pair: str,
+        pkl_cashe_path: str,
+        archive_file: str = None,
+        archive_update: bool = False,
 ) -> pd.DataFrame:
-    # cashe_path = 'data/ohlcv.pkl'
-    if os.path.isfile(local_cashe_path):
-        df = pd.read_pickle(local_cashe_path)
+    if os.path.isfile(pkl_cashe_path):
+        df = pd.read_pickle(pkl_cashe_path)
+        return df
     else:
-        # df = load_ohlcv(ohlcv_file='btradepy/data/csv/test.csv')
-        df = load_ohlcv(ohlcv_file=ohlcv_file_path)
-        df.to_pickle(local_cashe_path)
+        df: pd.DataFrame = get_ohlcv_with_archive(
+            pair=pair,
+            archive_file=archive_file,
+            archive_update=archive_update
+        )
+        df.to_pickle(pkl_cashe_path)
+        return df
+
+
+def info() -> List[str]:
+    pairs = ['btcfxjpy', 'btcjpy']
+    print(pairs)
+    return pairs
 
 
 if __name__ == '__main__':
-    df = get_ohlcv(
-        'btcfxjpy',
-        cashe_file='csv/ohlcv-btcfxjpy.csv',
-        cashe_update=True)
-    df = get_ohlcv(
-        'btcjpy',
-        cashe_file='csv/ohlcv-btcjpy.csv',
-        cashe_update=True)
+    df = load_ohlcv_with_cashe(
+        pair='btcfxjpy',
+        pkl_cashe_path='csv/ohlcv-btcfxjpy.pkl',
+        archive_file='csv/ohlcv-btcfxjpy.csv',
+        archive_update=True)
+    df = load_ohlcv_with_cashe(
+        pair='btcjpy',
+        pkl_cashe_path='csv/ohlcv-btcjpy.pkl',
+        archive_file='csv/ohlcv-btcjpy.csv',
+        archive_update=True)
 
 
 """
