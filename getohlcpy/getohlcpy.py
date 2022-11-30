@@ -1,6 +1,6 @@
-from datetime import timedelta, timezone
+from datetime import timedelta, timezone, datetime
 import os
-from typing import List
+from typing import List, Dict
 import requests
 import pandas as pd
 from requests.models import Response
@@ -13,7 +13,10 @@ def _get_ohlc_response(
     # exchange (str): 'bitflyer'
     # pair (str): 'btcfxjpy', 'btcjpy'
     url = f"https://api.cryptowat.ch/markets/bitflyer/{pair}/ohlc"
-    params = {'periods': 60, 'after': 978274800}  # DATE_2001_01_01
+    periods = 60
+    timestamp = int(datetime.now().timestamp())
+    timestamp = timestamp - (6000 + 10) * periods
+    params = {'periods': periods, 'after': timestamp}  # DATE_2001_01_01
     return requests.get(url, params)
 
 
@@ -56,8 +59,9 @@ def _reformat(df: pd.DataFrame) -> pd.DataFrame:
 
 def _fillna_ohlcv(
     df: pd.DataFrame,
+    freq: str = '1min',
 ) -> pd.DataFrame:
-    date = pd.date_range(start=df.index[0], end=df.index[-1], freq='1min')
+    date = pd.date_range(start=df.index[0], end=df.index[-1], freq=freq)
     ts = pd.DataFrame(range(len(date)), index=date, columns=['ts'])
     df = df.merge(ts, how='outer', right_index=True, left_index=True)
     df = df.drop(columns=['ts'])
@@ -74,6 +78,9 @@ def _csv_merge(
     df_cashe = load_ohlcv(archive_file)
     df_diff = df[~(df.index).isin(df_cashe.index[:-1])]
     df_result = pd.concat([df_cashe, df_diff], axis=0)
+    df_result['timestamp'] = pd.to_datetime(df_result.index, utc=True)
+    df_result['timestamp'] = df_result['timestamp'].dt.tz_convert(TZ_JTC)
+    df_result = df_result.set_index('timestamp')
     df_result.index.name = 'OpenTime'
     return df_result
 
@@ -126,6 +133,21 @@ def info() -> List[str]:
     pairs = ['btcfxjpy', 'btcjpy']
     print(pairs)
     return pairs
+
+
+def resample(df: pd.DataFrame, freq: str = '1T') -> pd.DataFrame:
+    d_ohlc: Dict[str, str] = {
+        'Open': 'first',
+        'High': 'max',
+        'Low': 'min',
+        'Close': 'last',
+        'Volume': 'sum',
+        'QuoteVolume': 'sum',
+    }
+    # freq = '1T'
+    df = df.resample(freq).agg(d_ohlc)  # type: ignore
+    df = _fillna_ohlcv(df, freq=freq)
+    return df
 
 
 if __name__ == '__main__':
